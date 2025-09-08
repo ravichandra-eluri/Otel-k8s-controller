@@ -1,0 +1,53 @@
+apiVersion: otel.chandradevgo.io/v1alpha1
+kind: OTelCollector
+metadata:
+  name: production-collector
+  namespace: observability
+spec:
+  replicas: 2
+  image: "otel/opentelemetry-collector-contrib:0.91.0"
+  exporterEndpoint: "jaeger-collector.observability.svc.cluster.local:4317"
+
+  pipeline:
+    mode: grpc
+    port: 4317
+    enableMetrics: true
+    enableTraces: true
+    enableLogs: false
+
+  sampling:
+    strategy: tail
+    tailPolicies:
+      - errors-policy
+      - slow-traces-policy
+
+  storeAndForward:
+    enabled: true
+    bufferPath: "/var/otel/buffer"
+    maxBufferSizeMB: 512
+    retryIntervalSeconds: 30
+---
+apiVersion: otel.chandradevgo.io/v1alpha1
+kind: OTelCollector
+metadata:
+  name: edge-collector
+  namespace: observability
+spec:
+  replicas: 1
+  exporterEndpoint: "https://otel.gdc-endpoint.example.com:4317"
+
+  pipeline:
+    mode: grpc
+    port: 4317
+    enableTraces: true
+    enableMetrics: true
+
+  sampling:
+    strategy: always_on
+
+  # Store-and-forward for GDC edge environments with intermittent connectivity
+  storeAndForward:
+    enabled: true
+    bufferPath: "/var/otel/buffer"
+    maxBufferSizeMB: 1024
+    retryIntervalSeconds: 60
